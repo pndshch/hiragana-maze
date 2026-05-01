@@ -46,9 +46,10 @@
   <div id="screen-game" class="screen">
     <div id="hud">
       <button id="btn-back" onclick="goToMenu()" title="もどる">✕</button>
+      <button id="btn-voice" onclick="toggleVoice()" title="読み上げ ON/OFF">🔊</button>
       <div id="target-wrap">
         <span id="target-label">つぎ▶</span>
-        <span id="target-chars"></span>
+        <span id="target-chars" title="タップで読み上げ"></span>
       </div>
       <div id="timer">0:00</div>
     </div>

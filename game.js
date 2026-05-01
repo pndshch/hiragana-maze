@@ -1,6 +1,83 @@
 'use strict';
 
 // ============================================================
+// Voice (Web Speech API)
+// ============================================================
+const voice = {
+  synth: window.speechSynthesis || null,
+  voice: null,
+  enabled: localStorage.getItem('hm_voice') !== '0',
+
+  init() {
+    if (!this.synth) return;
+    const pick = () => {
+      const all = this.synth.getVoices();
+      const ja  = all.filter(v => (v.lang || '').toLowerCase().startsWith('ja'));
+      if (!ja.length) return;
+      const prefer = [
+        /Kyoko.*Premium/i, /Kyoko.*Enhanced/i,
+        /Premium.*ja/i, /Enhanced.*ja/i, /Neural.*ja/i,
+        /Google.*日本/, /Google.*Japanese/i,
+        /Microsoft.*Nanami/i, /Microsoft.*Ayumi/i, /Microsoft.*Haruka/i,
+        /Kyoko/i, /O-ren/i, /Otoya/i,
+      ];
+      for (const re of prefer) {
+        const v = ja.find(v => re.test(v.name));
+        if (v) { this.voice = v; return; }
+      }
+      this.voice = ja[0];
+    };
+    pick();
+    this.synth.addEventListener('voiceschanged', pick);
+    this._updateBtn();
+  },
+
+  unlock() {
+    // iOS / Safari requires a user gesture before audio plays.
+    if (!this.synth) return;
+    try {
+      const u = new SpeechSynthesisUtterance(' ');
+      u.volume = 0; u.rate = 1; u.pitch = 1; u.lang = 'ja-JP';
+      this.synth.speak(u);
+    } catch (_) {}
+  },
+
+  speak(text, opts = {}) {
+    if (!this.enabled || !this.synth || !text) return;
+    try {
+      this.synth.cancel(); // interrupt previous
+      const u = new SpeechSynthesisUtterance(text);
+      if (this.voice) u.voice = this.voice;
+      u.lang = 'ja-JP';
+      u.rate   = opts.rate   ?? 1.0;
+      u.pitch  = opts.pitch  ?? 1.15;
+      u.volume = opts.volume ?? 1.0;
+      this.synth.speak(u);
+    } catch (_) {}
+  },
+
+  toggle() {
+    this.enabled = !this.enabled;
+    localStorage.setItem('hm_voice', this.enabled ? '1' : '0');
+    if (!this.enabled && this.synth) this.synth.cancel();
+    this._updateBtn();
+    return this.enabled;
+  },
+
+  _updateBtn() {
+    const btn = document.getElementById('btn-voice');
+    if (!btn) return;
+    btn.textContent = this.enabled ? '🔊' : '🔇';
+    btn.classList.toggle('muted', !this.enabled);
+  },
+};
+
+function toggleVoice() {
+  const on = voice.toggle();
+  if (on) voice.speak('オン', { pitch: 1.2 });
+}
+
+// ============================================================
 // Data
 // ============================================================
 const HIRAGANA = [...'あいうえおかきくけこさしすせそたちつてとなにぬねのはひふへほまみむめもやゆよらりるれろわをん'];
@@ -97,6 +174,15 @@ class Game {
     document.addEventListener('touchstart', this._onTS, { passive: true });
     document.addEventListener('touchend',   this._onTE, { passive: true });
 
+    // Tap target chars in HUD to re-speak
+    const tEl = document.getElementById('target-chars');
+    this._onTargetTap = () => {
+      if (this.allDone) { voice.speak('ゴールへ！', { pitch: 1.2 }); return; }
+      const c = this.sequence[this.seqIdx];
+      if (c) voice.speak(c, { pitch: 1.25 });
+    };
+    if (tEl) tEl.addEventListener('click', this._onTargetTap);
+
     document.querySelectorAll('.dpad-btn').forEach(btn => {
       const go = () => {
         const d = btn.dataset.dir;
@@ -183,14 +269,17 @@ class Game {
       this.charMap.delete(key);
       this.seqIdx++;
       this._burst(this.px * CS + CS / 2, this.py * CS + CS / 2, char, false);
+      voice.speak(char, { rate: 1.0, pitch: 1.3 });
       if (this.seqIdx >= this.sequence.length) {
         this.allDone = true;
         this._bigBurst();
+        setTimeout(() => voice.speak('ぜんぶ あつめた！ゴールへ！', { rate: 1.0, pitch: 1.2 }), 450);
       }
     } else {
       // wrong char – flash red on that cell
       this.flashMap.set(key, 1.0);
       this._burst(this.px * CS + CS / 2, this.py * CS + CS / 2, null, true);
+      voice.speak(char, { rate: 0.95, pitch: 0.95 });
     }
   }
 
@@ -199,7 +288,8 @@ class Game {
       this.won = true;
       this.elapsed = (performance.now() - this.t0) / 1000;
       this._bigBurst();
-      setTimeout(() => showWin(this.elapsed, this.word), 1000);
+      voice.speak('クリア！おめでとう！', { rate: 1.0, pitch: 1.3 });
+      setTimeout(() => showWin(this.elapsed, this.word), 1100);
     }
   }
 
@@ -445,6 +535,9 @@ class Game {
     document.removeEventListener('keydown', this._onKey);
     document.removeEventListener('touchstart', this._onTS);
     document.removeEventListener('touchend',   this._onTE);
+    const tEl = document.getElementById('target-chars');
+    if (tEl && this._onTargetTap) tEl.removeEventListener('click', this._onTargetTap);
+    if (voice.synth) voice.synth.cancel();
   }
 }
 
@@ -474,6 +567,7 @@ function _scaleCanvas() {
 
 function startGame(mode) {
   currentMode = mode;
+  voice.unlock(); // iOS audio gesture
   setScreen('screen-game');
 
   const canvas = document.getElementById('canvas');
@@ -486,6 +580,12 @@ function startGame(mode) {
   currentGame = new Game(canvas, mode);
 
   _scaleCanvas();
+
+  if (mode === 'word' && currentGame.word) {
+    setTimeout(() => voice.speak(`${currentGame.word}を、あつめよう！`, { rate: 0.95, pitch: 1.15 }), 350);
+  } else if (mode === 'order') {
+    setTimeout(() => voice.speak('あいうえお じゅんに、あつめよう！', { rate: 0.95, pitch: 1.15 }), 350);
+  }
 }
 
 function goToMenu() {
@@ -507,6 +607,7 @@ function showWin(elapsed, word) {
 }
 
 window.addEventListener('resize', _scaleCanvas);
+voice.init();
 
 // ============================================================
 // Stars (menu background)
