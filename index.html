@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>ひらがな迷路</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ========= MENU ========= -->
+  <div id="screen-menu" class="screen active">
+    <div class="stars" aria-hidden="true"></div>
+    <div class="menu-inner">
+      <h1 class="logo">
+        <span class="logo-hira">ひらがな</span>
+        <span class="logo-maze">迷路</span>
+      </h1>
+      <p class="tagline">文字を集めてゴールへ！</p>
+
+      <div class="mode-cards">
+        <button class="mode-card" onclick="startGame('order')">
+          <div class="card-badge order-badge">あ→ん</div>
+          <div class="card-title">じゅんばん</div>
+          <div class="card-desc">あ・い・う…の順に<br>全部集めよう</div>
+        </button>
+        <button class="mode-card" onclick="startGame('word')">
+          <div class="card-badge word-badge">ことば</div>
+          <div class="card-title">ことば集め</div>
+          <div class="card-desc">指定のひらがなを<br>順番に拾ってゴール</div>
+        </button>
+      </div>
+
+      <div class="controls-hint">
+        <span>⬆⬇⬅➡ / WASD で移動</span>
+        <span class="sep">·</span>
+        <span>スワイプ対応</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========= GAME ========= -->
+  <div id="screen-game" class="screen">
+    <div id="hud">
+      <button id="btn-back" onclick="goToMenu()" title="もどる">✕</button>
+      <div id="target-wrap">
+        <span id="target-label">つぎ▶</span>
+        <span id="target-chars"></span>
+      </div>
+      <div id="timer">0:00</div>
+    </div>
+
+    <div id="canvas-wrap">
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <div id="dpad">
+      <div class="dpad-row">
+        <button class="dpad-btn" data-dir="up">▲</button>
+      </div>
+      <div class="dpad-row">
+        <button class="dpad-btn" data-dir="left">◀</button>
+        <button class="dpad-btn dpad-center" data-dir="down">▼</button>
+        <button class="dpad-btn" data-dir="right">▶</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========= WIN ========= -->
+  <div id="screen-win" class="screen">
+    <div class="win-box">
+      <div class="win-trophy">🏆</div>
+      <h2 class="win-title">クリア！</h2>
+      <div class="win-time-wrap">
+        <span class="win-time-label">タイム</span>
+        <span id="win-time" class="win-time-val">0:00</span>
+      </div>
+      <div id="win-word-wrap" class="win-word"></div>
+      <div class="win-btns">
+        <button class="btn-ghost" onclick="goToMenu()">もどる</button>
+        <button class="btn-primary" onclick="restartGame()">もういちど</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script src="game.js"></script>
+</body>
+</html>
